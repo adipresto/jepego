@@ -8,12 +8,18 @@ import (
 
 // Result menyimpan JSON string
 type Result struct {
-	Raw string
+	Raw        string
+	Collection []string
+}
+
+type ParserOption struct {
+	IsRaw bool
 }
 
 // menghapus semua "// comment" dan memangkas space
-func RemoveComments(jsonStr string) string {
+func removeComments(jsonStr string) string {
 	lines := strings.Split(jsonStr, "\n")
+
 	var b strings.Builder
 	for _, line := range lines {
 		if line != "" {
@@ -28,17 +34,34 @@ func RemoveComments(jsonStr string) string {
 }
 
 // Get mengambil nilai JSON berdasarkan path tanpa unmarshal
-func Get(jsonStr string, path string) Result {
-	jsonStr = RemoveComments(jsonStr)
+func Get(jsonStr string, path string, args ...ParserOption) Result {
+	// sest default option
+	o := ParserOption{
+		IsRaw: true,
+	}
+	// kalau ada opt
+	if len(args) > 0 {
+		o = args[0]
+	}
+
+	jsonStr = removeComments(jsonStr)
 
 	// Modifier @ / !
 	if strings.HasPrefix(path, "@") || strings.HasPrefix(path, "!") {
 		key := path[1:]
 		val := getTopLevelKey(jsonStr, key)
 		if val == "" {
-			return Result{Raw: "null"}
+			if o.IsRaw {
+				return Result{Raw: "null"}
+			}
+			return Result{
+				Collection: []string{"null"},
+			}
 		}
-		return Result{Raw: val}
+		if o.IsRaw {
+			return Result{Raw: val}
+		}
+		return Result{Collection: []string{val}}
 	}
 
 	// Subselector object {field1,field2,...}
@@ -64,9 +87,15 @@ func Get(jsonStr string, path string) Result {
 			sub = append(sub, fmt.Sprintf(`"%s":%s`, keyName, val))
 		}
 		if len(sub) == 0 {
-			return Result{Raw: "null"}
+			if o.IsRaw {
+				return Result{Raw: "null"}
+			}
+			return Result{Collection: []string{"null"}}
 		}
-		return Result{Raw: "{" + strings.Join(sub, ",") + "}"}
+		if o.IsRaw {
+			return Result{Raw: "{" + strings.Join(sub, ",") + "}"}
+		}
+		return Result{Collection: sub}
 	}
 
 	// Subselector array [0,2]
@@ -82,18 +111,30 @@ func Get(jsonStr string, path string) Result {
 			}
 		}
 		if len(arrVals) == 0 {
-			return Result{Raw: "null"}
+			if o.IsRaw {
+				return Result{Raw: "null"}
+			}
+			return Result{Collection: []string{"null"}}
 		}
-		return Result{Raw: "[" + strings.Join(arrVals, ",") + "]"}
+		if o.IsRaw {
+			return Result{Raw: "[" + strings.Join(arrVals, ",") + "]"}
+		}
+		return Result{Collection: arrVals}
 	}
 
 	// Nested path (a.b[0].c)
 	parts := splitPath(path)
 	val, ok := getNestedValue(jsonStr, parts)
 	if !ok {
-		return Result{Raw: "null"}
+		if o.IsRaw {
+			return Result{Raw: "null"}
+		}
+		return Result{Collection: []string{"null"}}
 	}
-	return Result{Raw: val}
+	if o.IsRaw {
+		return Result{Raw: val}
+	}
+	return Result{Collection: []string{val}}
 }
 
 // =================== Helper Functions =======================

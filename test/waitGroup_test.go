@@ -18,15 +18,15 @@ func Test_waitGroup(t *testing.T) {
 	//
 	go func() {
 		defer wg.Done()
-		res[0] = jsonParser_v2.Get(configuration.JsonStr, "action")
+		res[0] = jsonParser_v2.Get(configuration.JsonStr, "action", jsonParser_v2.ParserOption{IsRaw: false})
 	}()
 	go func() {
 		defer wg.Done()
-		res[1] = jsonParser_v2.Get(configuration.JsonStr, "serviceOrderJobs[1].price")
+		res[1] = jsonParser_v2.Get(configuration.JsonStr, "serviceOrderJobs[1].price", jsonParser_v2.ParserOption{IsRaw: false})
 	}()
 	go func() {
 		defer wg.Done()
-		res[2] = jsonParser_v2.Get(configuration.JsonStr, "vehicle.year")
+		res[2] = jsonParser_v2.Get(configuration.JsonStr, "vehicle.year", jsonParser_v2.ParserOption{IsRaw: false})
 	}()
 
 	// tunggu sampai semua goroutine selesai

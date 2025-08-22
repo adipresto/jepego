@@ -23,11 +23,11 @@ func BenchmarkGetField_First_Once(b *testing.B) {
 }
 func BenchmarkGetFields(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		jsonParser_v2.Get(configuration.JsonStr, "{action,serviceOrderJobs[3].price,bookingDateTime}")
+		jsonParser_v2.Get(configuration.JsonStr, "{action,serviceOrderJobs[3].price,bookingDateTime}", jsonParser_v2.ParserOption{IsRaw: false})
 	}
 }
 func BenchmarkGetFields_Once(b *testing.B) {
-	jsonParser_v2.Get(configuration.JsonStr, "{action,serviceOrderJobs[3].price,bookingDateTime}")
+	jsonParser_v2.Get(configuration.JsonStr, "{action,serviceOrderJobs[3].price,bookingDateTime}", jsonParser_v2.ParserOption{IsRaw: false})
 }
 func BenchmarkGetNestedField(b *testing.B) {
 	for i := 0; i < b.N; i++ {
