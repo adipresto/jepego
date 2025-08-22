@@ -15,13 +15,18 @@ func BenchmarkGetField_Last(b *testing.B) {
 func BenchmarkGetField_First(b *testing.B) {
 	count := b.N
 	for i := 0; i < count; i++ {
-		jsonParser_v2.Get(configuration.JsonStr, "bookingDateTime")
+		jsonParser_v2.Get(configuration.JsonStr, "bookingDateTime", jsonParser_v2.ParserOption{IsRaw: false})
 	}
 }
 func BenchmarkGetField_First_Once(b *testing.B) {
-	jsonParser_v2.Get(configuration.JsonStr, "bookingDateTime")
+	jsonParser_v2.Get(configuration.JsonStr, "bookingDateTime", jsonParser_v2.ParserOption{IsRaw: false})
 }
-func BenchmarkGetFields(b *testing.B) {
+func BenchmarkGetFields_Raw(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		jsonParser_v2.Get(configuration.JsonStr, "{action,serviceOrderJobs[3].price,bookingDateTime}", jsonParser_v2.ParserOption{IsRaw: true})
+	}
+}
+func BenchmarkGetFields_Collection(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		jsonParser_v2.Get(configuration.JsonStr, "{action,serviceOrderJobs[3].price,bookingDateTime}", jsonParser_v2.ParserOption{IsRaw: false})
 	}

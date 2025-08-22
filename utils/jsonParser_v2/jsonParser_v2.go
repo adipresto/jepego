@@ -48,8 +48,7 @@ func Get(jsonStr string, path string, args ...ParserOption) Result {
 
 	// Modifier @ / !
 	if strings.HasPrefix(path, "@") || strings.HasPrefix(path, "!") {
-		key := path[1:]
-		val := getTopLevelKey(jsonStr, key)
+		val := getTopLevelKey(jsonStr, path[1:])
 		if val == "" {
 			if o.IsRaw {
 				return Result{Raw: "null"}
@@ -75,16 +74,18 @@ func Get(jsonStr string, path string, args ...ParserOption) Result {
 			if !ok {
 				continue
 			}
-
-			// key di output = field persis seperti di input
-			keyName := f
-
 			// Jika value object/array, wrap jadi string JSON
 			if val != "" && (val[0] == '{' || val[0] == '[') {
 				val = fmt.Sprintf(`"%s"`, val)
 			}
 
-			sub = append(sub, fmt.Sprintf(`"%s":%s`, keyName, val))
+			if o.IsRaw {
+				// disimpan sebagai keyname:value
+				sub = append(sub, fmt.Sprintf(`"%s":%s`, f, val))
+			} else {
+				// disimpan hanya value
+				sub = append(sub, val)
+			}
 		}
 		if len(sub) == 0 {
 			if o.IsRaw {
@@ -100,8 +101,7 @@ func Get(jsonStr string, path string, args ...ParserOption) Result {
 
 	// Subselector array [0,2]
 	if strings.HasPrefix(path, "[") && strings.HasSuffix(path, "]") {
-		idxStr := path[1 : len(path)-1]
-		parts := strings.Split(idxStr, ",")
+		parts := strings.Split(path[1:len(path)-1], ",")
 		arrVals := []string{}
 		arr := getTopLevelArray(jsonStr)
 		for _, s := range parts {
@@ -123,8 +123,7 @@ func Get(jsonStr string, path string, args ...ParserOption) Result {
 	}
 
 	// Nested path (a.b[0].c)
-	parts := splitPath(path)
-	val, ok := getNestedValue(jsonStr, parts)
+	val, ok := getNestedValue(jsonStr, splitPath(path))
 	if !ok {
 		if o.IsRaw {
 			return Result{Raw: "null"}
@@ -242,20 +241,22 @@ func extractValue(s string) (string, int) {
 			}
 		}
 	case '"':
+		sLen := len(s)
 		// ambil string literal
-		for i := 1; i < len(s); i++ {
+		for i := 1; i < sLen; i++ {
 			if s[i] == '"' {
 				return s[:i+1], i + 1
 			}
 		}
 	default:
+		sLen := len(s)
 		// number, boolean, null
-		for i := 0; i < len(s); i++ {
+		for i := 0; i < sLen; i++ {
 			if s[i] == ',' || s[i] == '}' || s[i] == ']' {
 				return strings.TrimSpace(s[:i]), i
 			}
 		}
-		return strings.TrimSpace(s), len(s)
+		return strings.TrimSpace(s), sLen
 	}
 	return "", 0
 }
