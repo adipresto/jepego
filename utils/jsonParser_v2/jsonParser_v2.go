@@ -48,8 +48,8 @@ func Get(jsonStr string, path string, args ...ParserOption) Result {
 
 	// Modifier @ / !
 	if strings.HasPrefix(path, "@") || strings.HasPrefix(path, "!") {
-		val := getTopLevelKey(jsonStr, path[1:])
-		if val == "" {
+		val, ok := getNestedValue(jsonStr, splitPath(path[1:]))
+		if val == "" || !ok {
 			if o.IsRaw {
 				return Result{Raw: "null"}
 			}
@@ -103,11 +103,36 @@ func Get(jsonStr string, path string, args ...ParserOption) Result {
 	if strings.HasPrefix(path, "[") && strings.HasSuffix(path, "]") {
 		parts := strings.Split(path[1:len(path)-1], ",")
 		arrVals := []string{}
-		arr := getTopLevelArray(jsonStr)
-		for _, s := range parts {
-			s = strings.TrimSpace(s)
-			if idx, err := strconv.Atoi(s); err == nil && idx >= 0 && idx < len(arr) {
-				arrVals = append(arrVals, arr[idx])
+
+		if jsonStr[0] == '[' {
+			arr := getTopLevelArray(jsonStr)
+			for _, s := range parts {
+				s = strings.TrimSpace(s)
+				if idx, err := strconv.Atoi(s); err == nil && idx >= 0 && idx < len(arr) {
+					arrVals = append(arrVals, arr[idx])
+				}
+			}
+		} else {
+			for _, s := range parts {
+				s = strings.TrimSpace(s)
+				val, ok := getNestedValue(jsonStr, splitPath(s))
+
+				if !ok {
+					continue
+				}
+
+				// Jika value object/array, wrap jadi string JSON
+				if val != "" && (val[0] == '{' || val[0] == '[') {
+					val = fmt.Sprintf(`"%s"`, val)
+				}
+
+				if o.IsRaw {
+					// disimpan sebagai keyname:value
+					arrVals = append(arrVals, fmt.Sprintf(`"%s":%s`, s, val))
+				} else {
+					// disimpan hanya value
+					arrVals = append(arrVals, val)
+				}
 			}
 		}
 		if len(arrVals) == 0 {

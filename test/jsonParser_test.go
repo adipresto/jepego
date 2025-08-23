@@ -3,6 +3,7 @@ package test
 import (
 	"poc_jsonParser/configuration"
 	"poc_jsonParser/utils/jsonParser_v2"
+	"strings"
 	"testing"
 )
 
@@ -83,21 +84,21 @@ func TestGetSubselectorObject_false(t *testing.T) {
 }
 
 func TestGetSubselectorArray(t *testing.T) {
-	res := jsonParser_v2.Get(configuration.JsonStr, "[0,2]", jsonParser_v2.ParserOption{IsRaw: false})
-	expected := `[10,30]`
-	if res.Raw != expected {
-		t.Errorf("expected %s, got %s", expected, res.Raw)
+	res := jsonParser_v2.Get(configuration.JsonStr, "[action,vehicle.year, serviceOrderJobs[1].price]", jsonParser_v2.ParserOption{IsRaw: false})
+	expected := []string{`"GR"`, "2015", `"383000.0"`}
+	if strings.Join(res.Collection, ",") != strings.Join(expected, ",") {
+		t.Errorf("expected %s, got %s", expected, res.Collection)
 	}
 }
 
 func TestGetModifierStatic(t *testing.T) {
-	res := jsonParser_v2.Get(configuration.JsonStr, "@name", jsonParser_v2.ParserOption{IsRaw: false})
-	if res.Raw != `"Alice"` {
-		t.Errorf("expected \"Alice\", got %s", res.Raw)
+	res := jsonParser_v2.Get(configuration.JsonStr, "@action", jsonParser_v2.ParserOption{IsRaw: true})
+	if res.Raw != `"GR"` {
+		t.Errorf("expected \"GR\", got %s", res.Raw)
 	}
 
-	res = jsonParser_v2.Get(configuration.JsonStr, "!age", jsonParser_v2.ParserOption{IsRaw: false})
-	if res.Raw != "30" {
-		t.Errorf("expected 30, got %s", res.Raw)
+	res = jsonParser_v2.Get(configuration.JsonStr, "!vehicle.year", jsonParser_v2.ParserOption{IsRaw: false})
+	if res.Collection[0] != "2015" {
+		t.Errorf("expected 2015, got %s", res.Collection[0])
 	}
 }
