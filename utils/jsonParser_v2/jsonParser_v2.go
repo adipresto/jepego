@@ -18,18 +18,38 @@ type ParserOption struct {
 
 // menghapus semua "// comment" dan memangkas space
 func removeComments(jsonStr string) string {
-	lines := strings.Split(jsonStr, "\n")
-
 	var b strings.Builder
-	for _, line := range lines {
-		if line != "" {
-			if idx := strings.Index(line, "//"); idx != -1 {
-				line = line[:idx]
-			}
-			line = strings.TrimSpace(line)
-			b.WriteString(line)
+
+	// state jika dalam baris comment
+	inComment := false
+
+	// cache panjang string
+	lenJsonStr := len(jsonStr)
+
+	for i := 0; i < lenJsonStr; i++ {
+		c := jsonStr[i]
+
+		// deteksi "//"
+		if !inComment && c == '/' && i+1 < lenJsonStr && jsonStr[i+1] == '/' {
+			inComment = true
+			i++ // skip char berikutnya
+			continue
 		}
+
+		// kalau lagi dalam comment, tunggu newline
+		if inComment {
+			if c == '\n' {
+				inComment = false
+				b.WriteByte('\n')
+			}
+			continue
+		}
+
+		// simpan karakter normal
+		b.WriteByte(c)
 	}
+
+	// hasil akhir: trim kiri/kanan spasi sekali saja
 	return strings.TrimSpace(b.String())
 }
 
@@ -37,7 +57,7 @@ func removeComments(jsonStr string) string {
 func Get(jsonStr string, path string, args ...ParserOption) Result {
 	// sest default option
 	o := ParserOption{
-		IsRaw: true,
+		IsRaw: false,
 	}
 	// kalau ada opt
 	if len(args) > 0 {
