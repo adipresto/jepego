@@ -16,40 +16,19 @@ type ParserOption struct {
 	IsRaw bool
 }
 
-// menghapus semua "// comment" dan memangkas space
 func removeComments(jsonStr string) string {
+	lines := strings.Split(jsonStr, "\n")
+
 	var b strings.Builder
-
-	// state jika dalam baris comment
-	inComment := false
-
-	// cache panjang string
-	lenJsonStr := len(jsonStr)
-
-	for i := 0; i < lenJsonStr; i++ {
-		c := jsonStr[i]
-
-		// deteksi "//"
-		if !inComment && c == '/' && i+1 < lenJsonStr && jsonStr[i+1] == '/' {
-			inComment = true
-			i++ // skip char berikutnya
-			continue
-		}
-
-		// kalau lagi dalam comment, tunggu newline
-		if inComment {
-			if c == '\n' {
-				inComment = false
-				b.WriteByte('\n')
+	for _, line := range lines {
+		if line != "" {
+			if idx := strings.Index(line, "//"); idx != -1 {
+				line = line[:idx]
 			}
-			continue
+			line = strings.TrimSpace(line)
+			b.WriteString(line)
 		}
-
-		// simpan karakter normal
-		b.WriteByte(c)
 	}
-
-	// hasil akhir: trim kiri/kanan spasi sekali saja
 	return strings.TrimSpace(b.String())
 }
 
