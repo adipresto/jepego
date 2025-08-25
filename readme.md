@@ -25,6 +25,8 @@ Bertujuan untuk efisiensi akses data JSON, memotong jalur `unmarshall` mengabaik
 ## Tabel Optimasi
 | Versi    | Test    | Ops (N) | ns/op | B/op  | allocs/op |
 | -------- | ------- | ------- | ----- | ----- | --------- |
+| **v1**   | get     | 86,926 | 13,389 | 5,162 | 125 |
+|          | getmany | 80,136 | 14,433 | 5,499 | 127 |
 | **v2**   | get     | 382,465 | 3,205 | 3,856 | 39        |
 |          | getmany | 165,984 | 6,839 | 4,496 | 99        |
 | **v3.1** | get     | 383,431 | 2,982 | 1,224 | 5         |
