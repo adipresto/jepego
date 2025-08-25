@@ -33,9 +33,16 @@ func Get(json []byte, path string) Result {
 		return Result{Key: path, OK: false}
 	}
 
+	var resVal []byte
+	if val[0] == '"' {
+		resVal = val[1 : len(val)-1]
+	} else {
+		resVal = val
+	}
+
 	return Result{
 		Key:      path,
-		Data:     val,
+		Data:     resVal,
 		DataType: detectType(val),
 		OK:       true,
 	}
@@ -58,9 +65,16 @@ func GetMany(json []byte, exprs []string) []Result {
 			continue
 		}
 
+		var resVal []byte
+		if val[0] == '"' {
+			resVal = val[1 : len(val)-1]
+		} else {
+			resVal = val
+		}
+
 		out = append(out, Result{
 			Key:      p,
-			Data:     val,
+			Data:     resVal,
 			DataType: detectType(val),
 			OK:       true,
 		})

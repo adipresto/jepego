@@ -2,11 +2,24 @@ package benchmark
 
 import (
 	"poc_jsonParser/configuration"
+	"poc_jsonParser/utils/jsonParser"
 	"poc_jsonParser/utils/jsonParser_v2"
 	"testing"
 )
 
-func BenchmarkGetField_Last(b *testing.B) {
+func BenchmarkGetField_v1(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		jsonParser.Get([]byte(configuration.JsonStrClean), "action")
+	}
+}
+func BenchmarkGetFields_v1(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		// a :=
+		jsonParser.GetMany([]byte(configuration.JsonStrClean), []string{"action", "branchCode", "vehicle.year"})
+		// fmt.Printf("%s, %s, %s", a[`action`], a[`branchCode`], a[`vehicle.year`])
+	}
+}
+func BenchmarkGetField_v2_Last(b *testing.B) {
 	count := b.N
 	for i := 0; i < count; i++ {
 		jsonParser_v2.Get(configuration.JsonStr, "action")

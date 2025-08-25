@@ -22,8 +22,12 @@ func TestGetField_v3(t *testing.T) {
 }
 func TestGetNestedField_v3(t *testing.T) {
 	res := jsonParser.Get([]byte(configuration.JsonStr), "customer.Name1")
-	if string(res.Data) != `"1dxmcz"` {
+	if string(res.Data) != `1dxmcz` {
 		t.Errorf("expected \"1dxmcz\", got %s", string(res.Data))
+	}
+	res = jsonParser.Get([]byte(configuration.JsonStr), "vehicle.year")
+	if string(res.Data) != `2015` {
+		t.Errorf("expected 2015, got %s", string(res.Data))
 	}
 }
 
@@ -35,7 +39,7 @@ func TestGetArrayIndex_v3(t *testing.T) {
 }
 
 func TestGetSubselectorObject_v3(t *testing.T) {
-	res := jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, ` vehicle.year`, `bookingDateTime`})
+	res := jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `vehicle.year`, `bookingDateTime`})
 
 	expected := `"GR"`
 	if string(res[0].Data) != expected {
@@ -51,8 +55,8 @@ func TestGetSubselectorObject_v3(t *testing.T) {
 // Perbedaan waktu eksekusi antara Raw = true dengan false. Mengambil kolom diakhir JSON
 func BenchmarkGetSubselectorObject_v3(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `serviceOrderJobs[1].price`, `vehicle.year`})
-		// jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `branchCode`})
+		// jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `serviceOrderJobs[1].price`, `vehicle.year`})
+		jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `branchCode`})
 	}
 }
 
