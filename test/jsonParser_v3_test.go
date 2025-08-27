@@ -55,8 +55,8 @@ func TestGetSubselectorObject_v3(t *testing.T) {
 // Perbedaan waktu eksekusi antara Raw = true dengan false. Mengambil kolom diakhir JSON
 func BenchmarkGetSubselectorObject_v3(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		// jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `serviceOrderJobs[1].price`, `vehicle.year`})
-		jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `branchCode`})
+		jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `serviceOrderJobs[1].price`, `vehicle.year`})
+		// jsonParser.GetMany([]byte(configuration.JsonStr), []string{`action`, `branchCode`})
 	}
 }
 
