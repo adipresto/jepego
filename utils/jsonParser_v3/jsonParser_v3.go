@@ -227,10 +227,10 @@ func extractValue(s []byte) ([]byte, int) {
 	}
 	switch s[0] {
 	case '{':
-		depth := 0
+		depth := 1
 		inStr := false
 		esc := false
-		for i := 0; i < len(s); i++ {
+		for i := 1; i < len(s); i++ { // mulai dari 1 karena s[0] == '{'
 			c := s[i]
 			if inStr {
 				if esc {
@@ -260,10 +260,10 @@ func extractValue(s []byte) ([]byte, int) {
 			}
 		}
 	case '[':
-		depth := 0
+		depth := 1
 		inStr := false
 		esc := false
-		for i := 0; i < len(s); i++ {
+		for i := 1; i < len(s); i++ { // mulai dari 1 karena s[0] == '['
 			c := s[i]
 			if inStr {
 				if esc {
