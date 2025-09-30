@@ -234,7 +234,7 @@ func TestGetAnotherObject(t *testing.T) {
       },
       {
         "invoice_number": "INV-000-0002",
-        "payment_by": "DEALER",
+        "payment_by": "DEALERB",
         "payment_stage": [
           {
             "payment_status": "WAITING_FOR_BILLING",
@@ -263,18 +263,23 @@ func TestGetAnotherObject(t *testing.T) {
 }
 
 	`
-	res := jsonParser.Get([]byte(grjson), "data.one_account")           // object
-	res1 := jsonParser.Get([]byte(grjson), "process")                   // "service_progress_update"
-	res2 := jsonParser.Get([]byte(grjson), "actual_mileage")            // undefined
-	res3 := jsonParser.Get([]byte(grjson), "data.one_account.email2")   // null
-	res4 := jsonParser.Get([]byte(grjson), "data.payment[].payment_by") // "DEALER"
-	res5 := jsonParser.Get([]byte(grjson), "data.payment")              // Array of object
+	res := jsonParser.Get([]byte(grjson), "data.one_account")         // object
+	res1 := jsonParser.Get([]byte(grjson), "process")                 // "service_progress_update"
+	res2 := jsonParser.Get([]byte(grjson), "actual_mileage")          // undefined
+	res3 := jsonParser.Get([]byte(grjson), "data.one_account.email2") // null
+	// res4 := jsonParser.Get([]byte(grjson), "data.payment[].payment_by")     // "DEALER"
+	res4a := jsonParser.GetAll([]byte(grjson), "data.payment[].payment_by") // "DEALER"
+	res5 := jsonParser.Get([]byte(grjson), "data.payment")                  // Array of object
 
 	fmt.Println(string(res.Data))
 	fmt.Println(string(res1.Data))
 	fmt.Println(string(res2.Data))
 	fmt.Println(string(res3.Data))
-	fmt.Println(string(res4.Data))
+	// fmt.Println(string(res4.Data)) // seharusnya "DEALER", "DEALER"
+	fmt.Println(len(res4a))
+	for _, v := range res4a {
+		fmt.Println(string(v.Data)) // "DEALER", "DEALER"
+	}
 	fmt.Println(string(res5.Data))
 
 }
