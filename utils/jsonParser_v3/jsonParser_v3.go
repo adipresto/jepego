@@ -48,6 +48,16 @@ func Get(json []byte, path string) Result {
 	}
 }
 
+func GetAll(json []byte, path string) []Result {
+	json = removeCommentsBytes(json)
+	if len(path) == 0 {
+		return nil
+	}
+
+	toks := splitPathBytes([]byte(path))
+	return getNestedValues(json, toks, path)
+}
+
 // GetMany menerima ekspresi dalam bentuk []string{"a","b","c.d","arr[5].x"}.
 // Mengembalikan hasil sesuai urutan field yang diminta.
 func GetMany(json []byte, exprs []string) []Result {
@@ -85,9 +95,10 @@ func GetMany(json []byte, exprs []string) []Result {
 // -------------------- Core traversal --------------------
 
 type pathToken struct {
-	key   []byte
-	index int
-	isIdx bool
+	key        []byte
+	index      int
+	isIdx      bool
+	isWildcard bool
 }
 
 // getNestedValue: berjalan mengikuti tokens (field / [index])
@@ -121,6 +132,77 @@ func getNestedValue(json []byte, parts []pathToken) ([]byte, bool) {
 		}
 	}
 	return cur, true
+}
+
+// getNestedValues: berjalan mengikuti tokens (field / [index / []]) dan mengembalikan semua hasil yang ditemukan.
+func getNestedValues(json []byte, parts []pathToken, fullPath string) []Result {
+	cur := trimSpaceBytes(json)
+	if len(parts) == 0 {
+		return []Result{{
+			Key:      fullPath,
+			Data:     unwrap(cur),
+			DataType: detectType(cur),
+			OK:       true,
+		}}
+	}
+
+	p := parts[0]
+	rest := parts[1:]
+
+	switch cur[0] {
+	case '{':
+		if p.isIdx {
+			return nil
+		}
+		v, ok := getTopLevelKey(cur, p.key)
+		if !ok {
+			return nil
+		}
+		return getNestedValues(v, rest, fullPath)
+
+	case '[':
+		if p.isIdx {
+			// index spesifik
+			v, ok := getArrayIndex(cur, p.index)
+			if !ok {
+				return nil
+			}
+			return getNestedValues(v, rest, fullPath)
+		}
+
+		// wildcard []
+		if len(p.key) == 0 && !p.isIdx {
+			var results []Result
+			i := 1
+			n := len(cur)
+			for i < n {
+				skipWS(&i, cur)
+				if i >= n || cur[i] == ']' {
+					break
+				}
+				val, consumed := extractValue(cur[i:])
+				if consumed == 0 {
+					break
+				}
+				sub := getNestedValues(val, rest, fullPath)
+				results = append(results, sub...)
+				i += consumed
+				skipWS(&i, cur)
+				if i < n && cur[i] == ',' {
+					i++
+				}
+			}
+			return results
+		}
+	}
+	return nil
+}
+
+func unwrap(val []byte) []byte {
+	if len(val) > 1 && val[0] == '"' {
+		return val[1 : len(val)-1]
+	}
+	return val
 }
 
 // getTopLevelKey: ambil value untuk key top-level pada sebuah object JSON.
@@ -337,8 +419,12 @@ func splitPathBytes(path []byte) []pathToken {
 				toks = append(toks, pathToken{key: cloneBytes(buf)})
 				buf = buf[:0]
 			}
-			// parse index
 			i++
+			if i < len(path) && path[i] == ']' {
+				// ← inilah [] → wildcard
+				toks = append(toks, pathToken{isWildcard: true})
+				continue
+			}
 			idx := 0
 			for i < len(path) && path[i] != ']' {
 				idx = idx*10 + int(path[i]-'0')
