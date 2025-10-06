@@ -60,18 +60,18 @@ func GetAll(json []byte, path string) []Result {
 
 // GetMany menerima ekspresi dalam bentuk []string{"a","b","c.d","arr[5].x"}.
 // Mengembalikan hasil sesuai urutan field yang diminta.
-func GetMany(json []byte, exprs []string) []Result {
+func GetMany(json []byte, exprs []string) map[string]Result {
 	json = removeCommentsBytes(json)
-	out := make([]Result, 0, len(exprs))
+	out := make(map[string]Result, len(exprs))
 	for _, p := range exprs {
 		if len(p) == 0 {
-			out = append(out, Result{Key: "", OK: false})
+			out[p] = Result{Key: "", OK: false}
 			continue
 		}
 
 		val, ok := getNestedValue(json, splitPathBytes([]byte(p)))
 		if !ok {
-			out = append(out, Result{Key: p, OK: false})
+			out[p] = Result{Key: p, OK: false}
 			continue
 		}
 
@@ -82,12 +82,12 @@ func GetMany(json []byte, exprs []string) []Result {
 			resVal = val
 		}
 
-		out = append(out, Result{
+		out[p] = Result{
 			Key:      p,
 			Data:     resVal,
 			DataType: detectType(val),
 			OK:       true,
-		})
+		}
 	}
 	return out
 }
