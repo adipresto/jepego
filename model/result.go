@@ -1,12 +1,12 @@
-package constant
+package model
 
 import (
-	jpbyte "github.com/adipresto/jepego/model/utils/byte"
+	"github.com/adipresto/jepego/utils"
 )
 
 type Result struct {
 	Key      string
 	Data     []byte
-	DataType jpbyte.DataType
+	DataType utils.DataType
 	OK       bool
 }

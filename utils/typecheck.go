@@ -12,7 +12,7 @@ const (
 	TypeNull
 )
 
-func detectType(raw []byte) DataType {
+func DetectType(raw []byte) DataType {
 	if len(raw) == 0 {
 		return TypeUnknown
 	}

@@ -41,7 +41,7 @@ func GetTopLevelKey(obj []byte, key []byte) ([]byte, bool) {
 		}
 
 		// ambil value
-		val, consumed := extractValue(obj[i:])
+		val, consumed := ExtractValue(obj[i:])
 		if consumed == 0 {
 			return nil, false
 		}
@@ -80,7 +80,7 @@ func GetArrayIndex(arr []byte, want int) ([]byte, bool) {
 		if arr[i] == ']' {
 			return nil, false
 		}
-		val, consumed := extractValue(arr[i:])
+		val, consumed := ExtractValue(arr[i:])
 		if consumed == 0 {
 			return nil, false
 		}
@@ -98,7 +98,7 @@ func GetArrayIndex(arr []byte, want int) ([]byte, bool) {
 }
 
 // extractValue: ambil 1 JSON value utuh dari s[0:], return (slice, bytesConsumed)
-func extractValue(s []byte) ([]byte, int) {
+func ExtractValue(s []byte) ([]byte, int) {
 	s = TrimSpaceBytes(s)
 	if len(s) == 0 {
 		return nil, 0
@@ -196,7 +196,7 @@ func extractValue(s []byte) ([]byte, int) {
 	return nil, 0
 }
 
-func unwrap(val []byte) []byte {
+func Unwrap(val []byte) []byte {
 	if len(val) > 1 && val[0] == '"' {
 		return val[1 : len(val)-1]
 	}

@@ -1,23 +1,20 @@
 package core
 
-import {
-	"github.com/adipresto/jepego/model/constant"
-	"github.com/adipresto/jepego/model/utils/byte"
-	"github.com/adipresto/jepego/model/utils/extract"
-	"github.com/adipresto/jepego/model/utils/path"
-	"github.com/adipresto/jepego/model/utils/typecheck"
-}
+import (
+	"github.com/adipresto/jepego/model"
+	"github.com/adipresto/jepego/utils"
+)
 
 // Get mengambil value berdasarkan path (contoh: "a.b[3].c").
-func Get(json []byte, path string) Result {
-	json = removeCommentsBytes(json)
+func Get(json []byte, path string) model.Result {
+	json = utils.RemoveCommentsBytes(json)
 	if len(path) == 0 {
-		return Result{Key: "", OK: false}
+		return model.Result{Key: "", OK: false}
 	}
 
-	val, ok := getNestedValue(json, splitPathBytes([]byte(path)))
+	val, ok := GetNestedValue(json, utils.SplitPathBytes([]byte(path)))
 	if !ok {
-		return Result{Key: path, OK: false}
+		return model.Result{Key: path, OK: false}
 	}
 
 	var resVal []byte
@@ -27,28 +24,28 @@ func Get(json []byte, path string) Result {
 		resVal = val
 	}
 
-	return Result{
+	return model.Result{
 		Key:      path,
 		Data:     resVal,
-		DataType: detectType(val),
+		DataType: utils.DetectType(val),
 		OK:       true,
 	}
 }
 
 // GetMany menerima ekspresi dalam bentuk []string{"a","b","c.d","arr[5].x"}.
 // Mengembalikan hasil sesuai urutan field yang diminta.
-func GetMany(json []byte, exprs []string) map[string]Result {
-	json = removeCommentsBytes(json)
-	out := make(map[string]Result, len(exprs))
+func GetMany(json []byte, exprs []string) map[string]model.Result {
+	json = utils.RemoveCommentsBytes(json)
+	out := make(map[string]model.Result, len(exprs))
 	for _, p := range exprs {
 		if len(p) == 0 {
-			out[p] = Result{Key: "", OK: false}
+			out[p] = model.Result{Key: "", OK: false}
 			continue
 		}
 
-		val, ok := getNestedValue(json, splitPathBytes([]byte(p)))
+		val, ok := GetNestedValue(json, utils.SplitPathBytes([]byte(p)))
 		if !ok {
-			out[p] = Result{Key: p, OK: false}
+			out[p] = model.Result{Key: p, OK: false}
 			continue
 		}
 
@@ -59,55 +56,55 @@ func GetMany(json []byte, exprs []string) map[string]Result {
 			retVal = val
 		}
 
-		out[p] = Result{
+		out[p] = model.Result{
 			Key:      p,
 			Data:     retVal,
-			DataType: detectType(val),
+			DataType: utils.DetectType(val),
 			OK:       true,
 		}
 	}
 	return out
 }
 
-func GetAll(json []byte, path string) []Result {
-	json = removeCommentsBytes(json)
+func GetAll(json []byte, path string) []model.Result {
+	json = utils.RemoveCommentsBytes(json)
 	if len(path) == 0 {
 		return nil
 	}
 
-	toks := splitPathBytes([]byte(path))
-	return getNestedValues(json, toks, path)
+	toks := utils.SplitPathBytes([]byte(path))
+	return GetNestedValues(json, toks, path)
 }
 
 // GetManyAll menerima banyak ekspresi path (contoh: "a", "b[0].c", "arr[].x").
 // Berbeda dengan GetMany yang hanya ambil satu value per key,
 // GetManyAll akan expand semua hasil jika ada wildcard [] di path.
 // Hasil dikembalikan dalam bentuk map[string][]Result agar tiap key bisa punya banyak item.
-func GetManyAll(json []byte, exprs []string) map[string][]Result {
-	json = removeCommentsBytes(json)
-	out := make(map[string][]Result, len(exprs))
+func GetManyAll(json []byte, exprs []string) map[string][]model.Result {
+	json = utils.RemoveCommentsBytes(json)
+	out := make(map[string][]model.Result, len(exprs))
 
 	for _, p := range exprs {
 		if len(p) == 0 {
-			out[p] = []Result{{Key: "", OK: false}}
+			out[p] = []model.Result{{Key: "", OK: false}}
 			continue
 		}
 
-		toks := splitPathBytes([]byte(p))
+		toks := utils.SplitPathBytes([]byte(p))
 
 		// kalau ada wildcard, pakai getNestedValues
 		hasWildcard := false
 		for _, t := range toks {
-			if t.isWildcard {
+			if t.IsWildcard {
 				hasWildcard = true
 				break
 			}
 		}
 
 		if hasWildcard {
-			results := getNestedValues(json, toks, p)
+			results := GetNestedValues(json, toks, p)
 			if len(results) == 0 {
-				out[p] = []Result{{Key: p, OK: false}}
+				out[p] = []model.Result{{Key: p, OK: false}}
 			} else {
 				out[p] = results
 			}
@@ -115,15 +112,15 @@ func GetManyAll(json []byte, exprs []string) map[string][]Result {
 		}
 
 		// kalau tanpa wildcard, fallback ke getNestedValue
-		val, ok := getNestedValue(json, toks)
+		val, ok := GetNestedValue(json, toks)
 		if !ok {
-			out[p] = []Result{{Key: p, OK: false}}
+			out[p] = []model.Result{{Key: p, OK: false}}
 			continue
 		}
-		out[p] = []Result{{
+		out[p] = []model.Result{{
 			Key:      p,
-			Data:     unwrap(val),
-			DataType: detectType(val),
+			Data:     utils.Unwrap(val),
+			DataType: utils.DetectType(val),
 			OK:       true,
 		}}
 	}

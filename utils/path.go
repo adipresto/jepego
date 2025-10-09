@@ -1,10 +1,10 @@
 package utils
 
 type PathToken struct {
-	key        []byte
-	index      int
-	isIdx      bool
-	isWildcard bool
+	Key        []byte
+	Index      int
+	IsIdx      bool
+	IsWildcard bool
 }
 
 // Pecah path seperti "a.b[3].c"
@@ -20,20 +20,20 @@ func SplitPathBytes(path []byte) []PathToken {
 		case '.':
 			// "a.b" → token pertama selesai di '.'
 			if i > start {
-				toks = append(toks, PathToken{key: path[start:i]})
+				toks = append(toks, PathToken{Key: path[start:i]})
 			}
 			start = i + 1 // geser start ke char setelah '.'
 
 		case '[':
 			// contoh: "arr[3]" → key = "arr"
 			if i > start {
-				toks = append(toks, PathToken{key: path[start:i]})
+				toks = append(toks, PathToken{Key: path[start:i]})
 			}
 			i++ // skip '['
 
 			if i < len(path) && path[i] == ']' {
 				// [] = wildcard
-				toks = append(toks, PathToken{isWildcard: true})
+				toks = append(toks, PathToken{IsWildcard: true})
 				start = i + 1
 				continue
 			}
@@ -45,14 +45,14 @@ func SplitPathBytes(path []byte) []PathToken {
 				i++
 			}
 			// selesai bracket → simpan token index
-			toks = append(toks, PathToken{isIdx: true, index: idx})
+			toks = append(toks, PathToken{IsIdx: true, Index: idx})
 			start = i + 1
 		}
 	}
 
 	// token terakhir (kalau masih ada sisa)
 	if start < len(path) {
-		toks = append(toks, PathToken{key: path[start:]})
+		toks = append(toks, PathToken{Key: path[start:]})
 	}
 	return toks
 }
