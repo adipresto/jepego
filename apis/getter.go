@@ -1,6 +1,7 @@
-package core
+package apis
 
 import (
+	"github.com/adipresto/jepego/core"
 	"github.com/adipresto/jepego/model"
 	"github.com/adipresto/jepego/utils"
 )
@@ -12,7 +13,7 @@ func Get(json []byte, path string) model.Result {
 		return model.Result{Key: "", OK: false}
 	}
 
-	val, ok := GetNestedValue(json, utils.SplitPathBytes([]byte(path)))
+	val, ok := core.GetNestedValue(json, utils.SplitPathBytes([]byte(path)))
 	if !ok {
 		return model.Result{Key: path, OK: false}
 	}
@@ -43,7 +44,7 @@ func GetMany(json []byte, exprs []string) map[string]model.Result {
 			continue
 		}
 
-		val, ok := GetNestedValue(json, utils.SplitPathBytes([]byte(p)))
+		val, ok := core.GetNestedValue(json, utils.SplitPathBytes([]byte(p)))
 		if !ok {
 			out[p] = model.Result{Key: p, OK: false}
 			continue
@@ -73,7 +74,7 @@ func GetAll(json []byte, path string) []model.Result {
 	}
 
 	toks := utils.SplitPathBytes([]byte(path))
-	return GetNestedValues(json, toks, path)
+	return core.GetNestedValues(json, toks, path)
 }
 
 // GetManyAll menerima banyak ekspresi path (contoh: "a", "b[0].c", "arr[].x").
@@ -102,7 +103,7 @@ func GetManyAll(json []byte, exprs []string) map[string][]model.Result {
 		}
 
 		if hasWildcard {
-			results := GetNestedValues(json, toks, p)
+			results := core.GetNestedValues(json, toks, p)
 			if len(results) == 0 {
 				out[p] = []model.Result{{Key: p, OK: false}}
 			} else {
@@ -112,7 +113,7 @@ func GetManyAll(json []byte, exprs []string) map[string][]model.Result {
 		}
 
 		// kalau tanpa wildcard, fallback ke getNestedValue
-		val, ok := GetNestedValue(json, toks)
+		val, ok := core.GetNestedValue(json, toks)
 		if !ok {
 			out[p] = []model.Result{{Key: p, OK: false}}
 			continue

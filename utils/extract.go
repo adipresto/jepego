@@ -25,7 +25,7 @@ func GetTopLevelKey(obj []byte, key []byte) ([]byte, bool) {
 		}
 		i++ // ke isi string
 		keyStart := i
-		ok, keyEnd := scanString(obj, i) // keyEnd = index dari closing quote
+		ok, keyEnd := ScanString(obj, i) // keyEnd = index dari closing quote
 		if !ok {
 			return nil, false
 		}
@@ -171,7 +171,7 @@ func ExtractValue(s []byte) ([]byte, int) {
 			}
 		}
 	case '"':
-		ok, end := scanString(s, 1)
+		ok, end := ScanString(s, 1)
 		if !ok {
 			return nil, 0
 		}
@@ -211,7 +211,7 @@ func SkipWS(i *int, b []byte) {
 }
 
 // scanString: mulai dari s[start], di mana s[start-1] == '"', cari closing quote (handle escape)
-func scanString(s []byte, start int) (ok bool, end int) {
+func ScanString(s []byte, start int) (ok bool, end int) {
 	esc := false
 	for i := start; i < len(s); i++ {
 		c := s[i]
