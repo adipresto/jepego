@@ -18,7 +18,6 @@ func Upsert(json []byte, path string, value []byte, valueType utils.DataType) ([
 
 func upsertNested(cur []byte, tokens []utils.PathToken, value []byte, valueType utils.DataType) ([]byte, error) {
 	if len(tokens) == 0 {
-		// reached leaf → return value as JSON fragment
 		switch valueType {
 		case utils.TypeString:
 			return append(append([]byte{'"'}, utils.EscapeString(value)...), '"'), nil
@@ -35,7 +34,6 @@ func upsertNested(cur []byte, tokens []utils.PathToken, value []byte, valueType 
 	rest := tokens[1:]
 
 	if len(cur) == 0 {
-		// init object or array if missing
 		if p.IsIdx || p.IsWildcard {
 			cur = []byte("[]")
 		} else {
@@ -45,7 +43,6 @@ func upsertNested(cur []byte, tokens []utils.PathToken, value []byte, valueType 
 
 	switch cur[0] {
 	case '{':
-		// object
 		v, ok := utils.GetTopLevelKey(cur, p.Key)
 		if ok {
 			newVal, err := upsertNested(v, rest, value, valueType)
@@ -54,16 +51,13 @@ func upsertNested(cur []byte, tokens []utils.PathToken, value []byte, valueType 
 			}
 			return replaceObjectKey(cur, p.Key, newVal)
 		} else {
-			// key missing → add new
 			newLeaf, err := upsertNested(nil, rest, value, valueType)
 			if err != nil {
 				return nil, err
 			}
 			return addObjectKey(cur, p.Key, newLeaf)
 		}
-
 	case '[':
-		// array
 		if !p.IsIdx {
 			return nil, fmt.Errorf("cannot upsert wildcard directly")
 		}
@@ -75,7 +69,6 @@ func upsertNested(cur []byte, tokens []utils.PathToken, value []byte, valueType 
 			}
 			return replaceArrayIndex(cur, p.Index, newVal)
 		} else {
-			// pad array sampai index → insert value
 			return padAndInsertArray(cur, p.Index, rest, value, valueType)
 		}
 	default:
@@ -83,12 +76,13 @@ func upsertNested(cur []byte, tokens []utils.PathToken, value []byte, valueType 
 	}
 }
 
-// replaceObjectKey: ganti value key existing
+// --- Object helpers ---
+
 func replaceObjectKey(obj []byte, key []byte, newVal []byte) ([]byte, error) {
 	i := 1
 	n := len(obj)
-	out := make([]byte, 0, len(obj)+len(newVal))
-	out = append(out, '{')
+	out := []byte{'{'}
+	first := true
 
 	for i < n {
 		utils.SkipWS(&i, obj)
@@ -116,22 +110,18 @@ func replaceObjectKey(obj []byte, key []byte, newVal []byte) ([]byte, error) {
 			return nil, fmt.Errorf("invalid value")
 		}
 
+		if !first {
+			out = append(out, ',')
+		}
+		first = false
+
+		out = append(out, '"')
+		out = append(out, obj[keyStart:keyEnd]...)
+		out = append(out, '"', ':')
+
 		if utils.BytesEqual(obj[keyStart:keyEnd], key) {
-			// key match → tulis key + newVal
-			if len(out) > 1 {
-				out = append(out, ',')
-			}
-			out = append(out, '"')
-			out = append(out, obj[keyStart:keyEnd]...)
-			out = append(out, '"', ':')
 			out = append(out, newVal...)
 		} else {
-			if len(out) > 1 {
-				out = append(out, ',')
-			}
-			out = append(out, '"')
-			out = append(out, obj[keyStart:keyEnd]...)
-			out = append(out, '"', ':')
 			out = append(out, val...)
 		}
 
@@ -141,17 +131,16 @@ func replaceObjectKey(obj []byte, key []byte, newVal []byte) ([]byte, error) {
 			i++
 		}
 	}
+
 	out = append(out, '}')
 	return out, nil
 }
 
-// addObjectKey: append key baru
 func addObjectKey(obj []byte, key []byte, val []byte) ([]byte, error) {
 	if len(obj) < 2 || obj[0] != '{' || obj[len(obj)-1] != '}' {
 		return nil, fmt.Errorf("invalid object")
 	}
-	out := make([]byte, 0, len(obj)+len(key)+len(val)+4)
-	out = append(out, obj[:len(obj)-1]...) // copy tanpa '}'
+	out := append([]byte{}, obj[:len(obj)-1]...)
 
 	if len(obj) > 2 {
 		out = append(out, ',')
@@ -165,12 +154,14 @@ func addObjectKey(obj []byte, key []byte, val []byte) ([]byte, error) {
 	return out, nil
 }
 
-// replaceArrayIndex: ganti elemen array existing
+// --- Array helpers ---
+
 func replaceArrayIndex(arr []byte, idx int, val []byte) ([]byte, error) {
 	i := 1
 	n := len(arr)
 	out := []byte{'['}
 	curIdx := 0
+	first := true
 
 	for i < n {
 		utils.SkipWS(&i, arr)
@@ -182,9 +173,11 @@ func replaceArrayIndex(arr []byte, idx int, val []byte) ([]byte, error) {
 			return nil, fmt.Errorf("invalid array")
 		}
 
-		if curIdx > 0 {
+		if !first {
 			out = append(out, ',')
 		}
+		first = false
+
 		if curIdx == idx {
 			out = append(out, val...)
 		} else {
@@ -198,11 +191,11 @@ func replaceArrayIndex(arr []byte, idx int, val []byte) ([]byte, error) {
 		}
 		curIdx++
 	}
+
 	out = append(out, ']')
 	return out, nil
 }
 
-// padAndInsertArray: jika index > len, pad dengan null
 func padAndInsertArray(arr []byte, idx int, rest []utils.PathToken, value []byte, valueType utils.DataType) ([]byte, error) {
 	i := 1
 	n := len(arr)
@@ -227,19 +220,16 @@ func padAndInsertArray(arr []byte, idx int, rest []utils.PathToken, value []byte
 		curIdx++
 	}
 
-	// pad sampai idx
 	for len(elements) <= idx {
 		elements = append(elements, []byte("null"))
 	}
 
-	// upsert leaf value
 	newVal, err := upsertNested(elements[idx], rest, value, valueType)
 	if err != nil {
 		return nil, err
 	}
 	elements[idx] = newVal
 
-	// rebuild array
 	out := []byte{'['}
 	for j, e := range elements {
 		if j > 0 {
