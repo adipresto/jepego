@@ -17,7 +17,7 @@ Dirancang untuk **performance-critical services**, API gateway, dan middleware.
 ## Installation
 
 ```bash
-go get github.com/yourname/jsonparser
+go get github.com/adipresto/jepego
 ```
 
 ---
