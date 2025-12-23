@@ -1,10 +1,78 @@
 # JEPEGO
 
 ---
+# JEPEGO (byte-level JSON traversal for Go)
+
+> **Fast, zero-allocation JSON traversal, mutation, and transformation — without decoding.**
+
+`jepego` adalah library Go untuk **membaca, memodifikasi, dan mentransform JSON langsung dari `[]byte`**, tanpa:
+
+* `encoding/json`
+* struct binding
+* reflection
+* AST
+
+Dirancang untuk **performance-critical services**, API gateway, dan middleware.
+
+## Installation
+
+```bash
+go get github.com/yourname/jsonparser
+```
+
+---
+
+## Quick Start
+
+### Get value by path
+
+```go
+v, ok := jsonparser.Get(data, "user.profile.name")
+if ok {
+    fmt.Println(string(v))
+}
+```
+
+---
+
+### Get all values (wildcard)
+
+```go
+res := jsonparser.GetAll(data, "users[].id")
+for _, r := range res {
+    fmt.Println(string(r.Data))
+}
+```
+
+---
+
+### Delete field
+
+```go
+out := jsonparser.DeleteField(data, "user.password")
+```
+
+---
+
+### Upsert field
+
+```go
+out := jsonparser.Upsert(data, "user.role", []byte(`"admin"`))
+```
+
+---
+
+### Transform key case
+
+```go
+out, _ := jsonparser.TransformCaseJSON(data, CamelCase)
+```
+
+---
 
 # Main Features
 
-Library ini bekerja langsung di level **`[]byte` JSON** tanpa `encoding/json`, dengan fokus pada **performance, streaming, dan zero-allocation traversal**.
+Library ini bekerja langsung di level **`[]byte` JSON** tanpa `encoding/json`.
 
 ## Comment Stripping (`//`) – JSON Superset
 
