@@ -1,17 +1,10 @@
-package utils
-
-type PathToken struct {
-	Key        []byte
-	Index      int
-	IsIdx      bool
-	IsWildcard bool
-}
+package jepego
 
 // Pecah path seperti "a.b[3].c"
 // Tanpa clone → setiap key adalah subslice langsung dari path.
 // Lebih hemat memori, tapi hasil valid hanya selama `path` masih ada.
-func SplitPathBytes(path []byte) []PathToken {
-	var toks []PathToken
+func splitPathBytes(path []byte) []pathToken {
+	var toks []pathToken
 	start := 0 // pointer awal token (key)
 
 	for i := 0; i < len(path); i++ {
@@ -20,20 +13,20 @@ func SplitPathBytes(path []byte) []PathToken {
 		case '.':
 			// "a.b" → token pertama selesai di '.'
 			if i > start {
-				toks = append(toks, PathToken{Key: path[start:i]})
+				toks = append(toks, pathToken{key: path[start:i]})
 			}
 			start = i + 1 // geser start ke char setelah '.'
 
 		case '[':
 			// contoh: "arr[3]" → key = "arr"
 			if i > start {
-				toks = append(toks, PathToken{Key: path[start:i]})
+				toks = append(toks, pathToken{key: path[start:i]})
 			}
 			i++ // skip '['
 
 			if i < len(path) && path[i] == ']' {
 				// [] = wildcard
-				toks = append(toks, PathToken{IsWildcard: true})
+				toks = append(toks, pathToken{isWildcard: true})
 				start = i + 1
 				continue
 			}
@@ -45,37 +38,23 @@ func SplitPathBytes(path []byte) []PathToken {
 				i++
 			}
 			// selesai bracket → simpan token index
-			toks = append(toks, PathToken{IsIdx: true, Index: idx})
+			toks = append(toks, pathToken{isIdx: true, index: idx})
 			start = i + 1
 		}
 	}
 
 	// token terakhir (kalau masih ada sisa)
 	if start < len(path) {
-		toks = append(toks, PathToken{Key: path[start:]})
+		toks = append(toks, pathToken{key: path[start:]})
 	}
 	return toks
 }
 
 // parseMultiExpr: "{a,b,c.d,arr[5].x}" -> [][]byte{"a","b","c.d","arr[5].x"}
-func ParseMultiExpr(expr []byte) [][]byte {
-	b := TrimSpaceBytes(expr)
+func parseMultiExpr(expr []byte) [][]byte {
+	b := trimSpaceBytes(expr)
 	if len(b) >= 2 && b[0] == '{' && b[len(b)-1] == '}' {
 		b = b[1 : len(b)-1]
 	}
-	return SplitCSVTopLevel(b)
-}
-
-// splitCSVTopLevel: pecah "a,b,c" jadi potongan, asumsi nama field tidak mengandung koma/kutip.
-func SplitCSVTopLevel(b []byte) [][]byte {
-	var parts [][]byte
-	start := 0
-	for i := 0; i <= len(b); i++ {
-		if i == len(b) || b[i] == ',' {
-			seg := TrimSpaceBytes(b[start:i])
-			parts = append(parts, CloneBytes(seg))
-			start = i + 1
-		}
-	}
-	return parts
+	return splitCSVTopLevel(b)
 }
