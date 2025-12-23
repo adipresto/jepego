@@ -1,78 +1,222 @@
-# POC JsonParser
-Bertujuan untuk efisiensi akses data JSON, memotong jalur `unmarshall` mengabaikan tokenisasi hanya berfokus pada pengambilan data dari key(s). _V3 bertujuan untuk mengurangi alokasi memori untuk menekan beban garbage collector (GC)
+# JEPEGO
 
-# Cepat, Hemat, Stabil, Praktis
-1. Ambil JSON langsung ke Key, tidak `unmarshal` dan dijadikan ke objek. Langsung mengembalikan value
-2. Enggak bikin boros RAM
-3. Bikin aplikasi tetap stabil
-4. Praktis, siapin `Result` tinggal `Get(JsonString, Key)` atau `GetMany(JsonString, Keys)`
+---
 
-# untuk kamu yang nerdy
+# Main Features
 
-## Perubahan Versi
-1. v2
-- Mengandalkan operasi `string`
-- Alokasi memoriyang masih banyak
-- Beban GC tinggi
+Library ini bekerja langsung di level **`[]byte` JSON** tanpa `encoding/json`, dengan fokus pada **performance, streaming, dan zero-allocation traversal**.
 
-2. v3.1
-- Menekan drastis alokasi memori
-- Menghilangkan operasi `string`
+## Comment Stripping (`//`) – JSON Superset
 
-3. v3.2
-- Optimasi spesifik `getMany`
+Library ini mendukung JSON dengan komentar `//`, mirip JSONC.
 
-## Tabel Optimasi
-| Versi    | Test    | Ops (N) | ns/op | B/op  | allocs/op |
-| -------- | ------- | ------- | ----- | ----- | --------- |
-| **v1**   | get     | 86,926 | 13,389 | 5,162 | 125 |
-|          | getmany | 80,136 | 14,433 | 5,499 | 127 |
-| **v2**   | get     | 382,465 | 3,205 | 3,856 | 39        |
-|          | getmany | 165,984 | 6,839 | 4,496 | 99        |
-| **v3.1** | get     | 383,431 | 2,982 | 1,224 | 5         |
-|          | getmany | 244,556 | 5,031 | 3,192 | 30        |
-| **v3.2** | get     | 338,244 | 3,186 | 1,216 | 4         |
-|          | getmany | 325,588 | 3,772 | 2,568 | 10        |
+### Contoh
 
-## Catatan Perubahan
-### v2 → v3.1
-
-get
-```
-ns/op: turun dari 3,205 → 2,982 (~7% lebih cepat)
-B/op: turun drastis 3,856 → 1,224 (-68%)
-allocs/op: 39 → 5 (-87%)
+```json
+{
+  // user identity
+  "user": {
+    "name": "Setyo", // display name
+    "age": 30
+  }
+}
 ```
 
-getmany
-```
-ns/op: 6,839 → 5,031 (~26% lebih cepat)
-B/op: 4,496 → 3,192 (-29%)
-allocs/op: 99 → 30 (-70%)
-```
-✅ Lonjakan besar dalam pengurangan alokasi memori dan beban GC.
+Semua API publik **secara otomatis**:
 
-### v3.1 → v3.2
+* Menghapus komentar
+* Tetap aman terhadap string literal (`"http://..."` tidak rusak)
 
-get
+### Cara Kerja
+
+* Single pass
+* In-place rewrite (tanpa alokasi buffer besar)
+* Komentar hanya dihapus **di luar string**
+
+### Implementasi inti:
+
+```go
+removeCommentsBytes
 ```
-ns/op: stabil (2,982 → 3,186, perbedaan kecil karena noise)
-B/op: hampir sama (1,224 → 1,216)
-allocs/op: 5 → 4 (-20%)
+
+---
+
+## Wildcard Traversal (`[]`) – Expand Array Values
+
+Path mendukung wildcard `[]` untuk mengambil **semua elemen array**.
+
+### Contoh JSON
+
+```json
+{
+  "users": [
+    { "id": 1, "name": "Adi" },
+    { "id": 2, "name": "Prasetyo" }
+  ]
+}
 ```
-getmany
+
+### Ambil semua nama user
+
+```go
+res := jsonparser.GetAll(data, "users[].name")
 ```
-ns/op: 5,031 → 3,772 (~25% lebih cepat)
-B/op: 3,192 → 2,568 (-20%)
-allocs/op: 30 → 10 (-67%)
+
+### Hasil
+
+```go
+[]Result{
+  { Key: "users[].name", Data: []byte("Adi"), OK: true },
+  { Key: "users[].name", Data: []byte("Prasetyo"), OK: true },
+}
 ```
-✅ Optimasi batch (getmany) berhasil: jauh lebih cepat dan jauh lebih hemat alokasi.
 
-## Kesimpulan
+### Karakteristik
 
-- v2 → v3.1: Lompatan terbesar di efisiensi memori dan penurunan allocs/op → dampak langsung ke stabilitas performa.
+* Tidak perlu loop manual
+* Tidak decode array ke struct
+* Depth-first traversal
+* Aman untuk nested wildcard
 
-- v3.1 → v3.2: Fokus ke getmany: throughput batch naik ~25%, allocs/op turun 3×, B/op juga lebih hemat.
+### Implementasi inti:
 
-## Secara keseluruhan:
-Implementasi v3.2 jauh lebih scalable untuk high-throughput service dibanding v2.
+```go
+getNestedValues
+```
+
+---
+
+## Streaming Case Transform (Zero Decode)
+
+Transformasi gaya penamaan key **tanpa parsing ke struct atau map**.
+
+### Contoh
+
+```json
+{
+  "user_name": "setyo",
+  "user_profile": {
+    "first_name": "Setyo",
+    "last_name": "Hadee"
+  }
+}
+```
+
+### Convert ke `camelCase`
+
+```go
+out, _ := jsonparser.TransformCaseJSON(data, CamelCase)
+```
+
+### Output
+
+```json
+{
+  "userName": "setyo",
+  "userProfile": {
+    "firstName": "Setyo",
+    "lastName": "Hadee"
+  }
+}
+```
+
+### Karakteristik
+
+* Streaming rewrite
+* Tidak membangun AST
+* Key di-unescape → di-transform → di-escape ulang
+* Value **tidak disentuh**
+
+### Cocok untuk:
+
+* API gateway
+* Middleware
+* Payload normalization
+
+### Implementasi inti:
+
+```go
+transformObject
+transformArray
+```
+
+---
+
+## Zero-Allocation Heavy Path Traversal
+
+Traversal JSON dilakukan **tanpa alokasi string / map / struct**.
+
+### Prinsip
+
+* Path dipecah ke `[]pathToken`
+* Token `key` adalah **subslice langsung dari path**
+* JSON value direferensikan sebagai subslice dari input
+
+```go
+type pathToken struct {
+  key        []byte
+  index      int
+  isIdx      bool
+  isWildcard bool
+}
+```
+
+### Contoh
+
+```go
+r := jsonparser.Get(data, "a.b[3].c")
+```
+
+Yang terjadi:
+
+* ❌ Tidak ada `map[string]interface{}`
+* ❌ Tidak ada `string(path)`
+* ❌ Tidak ada reflect
+* ✅ Pure byte scanning
+
+### Dampak
+
+* Sangat cepat untuk payload besar
+* GC pressure minimal
+* Cocok untuk high-throughput service
+
+### Implementasi inti:
+
+```go
+splitPathBytes
+getNestedValue
+extractValue
+```
+
+---
+
+## Feature Comparison
+
+| Feature                   | encoding/json | gjson | jsonparser |
+| ------------------------- | ------------- | ----- | ---------- |
+| Comment support (`//`)    | ❌             | ❌     | ✅          |
+| Wildcard array traversal  | ❌             | ✅     | ✅          |
+| Streaming key transform   | ❌             | ❌     | ✅          |
+| Zero-allocation traversal | ❌             | ✅     | ✅          |
+| Upsert by path            | ❌             | ❌     | ✅          |
+
+---
+
+##  Design Philosophy
+
+* **Read & write JSON as bytes**
+* **No reflection**
+* **No struct binding**
+* **Streaming-first**
+* **Composable primitives**
+
+Library ini ditujukan untuk:
+
+* API Gateway
+* ETL / JSON reshaping
+* Middleware
+* Performance-critical services
+
+---
+
+
